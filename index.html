@@ -80,8 +80,6 @@
             padding-top: 20px;
             text-align: center;
             width: 100%;
-            margin-left: auto;
-            margin-right: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -92,6 +90,7 @@
             background-color: #f8f8f8;
             cursor: crosshair;
             margin: 10px 0;
+            touch-action: none;
         }
 
         .signature-controls {
@@ -106,10 +105,6 @@
             border-radius: 5px;
             cursor: pointer;
             margin: 5px;
-        }
-
-        .signature-controls button:hover {
-            background-color: #555;
         }
 
         .signature-preview {
@@ -165,7 +160,7 @@
             <img src="logo.png" alt="Logo Conveniência da Carne" class="logo">
             <h1>Conveniência da Carne</h1>
             <p class="subtitle">Açougue e Conveniência • CNPJ: 53.428.799/0001-88</p>
-            <p class="subtitle">Rua felizardo moura, 250 - Jardim Planalto Parnamirim RN • (84) 99410-4560</p>
+            <p class="subtitle">Rua Felizardo Moura, 250 - Jardim Planalto Parnamirim RN • (84) 99410-4560</p>
         </div>
 
         <div class="receipt-content">
@@ -179,7 +174,7 @@
                         <strong>CPF:</strong> <span id="cpf">[000.000.000-00]</span>
                     </div>
                     <div class="detail-item">
-                        <strong>Valor:</strong> R$ <span id="valor">[00,00]</span>
+                        <strong>Valor:</strong> <span id="valor">[00,00]</span>
                     </div>
                     <div class="detail-item">
                         <strong>Referente a:</strong> <span id="referencia">[Descrição do Pagamento]</span>
@@ -209,7 +204,6 @@
         <div class="buttons">
             <button onclick="generateReceipt()">Gerar Recibo</button>
             <button onclick="window.print()">Imprimir Recibo</button>
-            <button onclick="saveAsPDF()">Salvar como PDF</button>
         </div>
     </div>
 
@@ -244,9 +238,11 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
             return [
-                (e.clientX - rect.left) * scaleX,
-                (e.clientY - rect.top) * scaleY
+                (clientX - rect.left) * scaleX,
+                (clientY - rect.top) * scaleY
             ];
         }
 
@@ -261,31 +257,50 @@
             document.getElementById('signature-preview').style.display = 'block';
         }
 
+        // Eventos para Desktop e Mobile
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', () => isDrawing = false);
         canvas.addEventListener('mouseout', () => isDrawing = false);
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e.touches[0]);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e.touches[0]);
+        });
+        canvas.addEventListener('touchend', () => isDrawing = false);
 
-        // Funções do Recibo
+        // Formatação de Dados
         function formatCPF(cpf) {
             cpf = cpf.replace(/\D/g, '');
             return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         }
 
+        function formatCurrency(value) {
+            const number = parseFloat(value.replace(',', '.'));
+            return isNaN(number) ? null : 
+                number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Geração do Recibo
         function generateReceipt() {
             const colaborador = prompt("Nome do Colaborador:");
             let cpf = prompt("CPF do Colaborador (apenas números):");
             cpf = formatCPF(cpf);
-            const valor = prompt("Valor do Pagamento (R$):");
+            const rawValor = prompt("Valor do Pagamento (Ex: 1500,50):");
+            const valor = formatCurrency(rawValor);
             const referencia = prompt("Referente a:");
             const metodo = prompt("Método de Pagamento:");
             
             const date = new Date().toLocaleDateString();
+            const signatureData = document.getElementById('signature-preview').src;
 
             if(colaborador && cpf && valor && referencia && metodo) {
-                const signatureData = document.getElementById('signature-preview').src;
                 if (!signatureData.includes('data:image')) {
-                    alert("Por favor, salve a assinatura eletrônica antes de gerar o recibo!");
+                    alert("Por favor, salve a assinatura eletrônica!");
                     return;
                 }
 
@@ -298,10 +313,11 @@
                 document.getElementById('data').textContent = date;
                 document.getElementById('metodo').textContent = metodo;
             } else {
-                alert("Por favor, preencha todos os campos!");
+                alert("Preencha todos os campos corretamente!");
             }
         }
 
+        // Geração de PDF
         function saveAsPDF() {
             const doc = new jsPDF();
             const element = document.querySelector('.container');
@@ -314,9 +330,7 @@
             }
 
             doc.html(tempElement, {
-                callback: function(doc) {
-                    doc.save('comprovante.pdf');
-                },
+                callback: (doc) => doc.save('comprovante.pdf'),
                 margin: [10, 10, 10, 10],
                 width: 190,
                 windowWidth: 800
