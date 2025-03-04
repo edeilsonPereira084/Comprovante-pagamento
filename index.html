@@ -75,16 +75,47 @@
         }
 
         .signature-area {
-        margin-top: 30px;
-        border-top: 1px solid #ddd;
-        padding-top: 20px;
-        text-align: center; /* Centraliza o conteúdo horizontalmente */
-        width: 100%; /* Garante que ocupa toda a largura disponível */
-        margin-left: auto;
-        margin-right: auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center; /* Centraliza verticalmente os itens */
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+            text-align: center;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .signature-pad {
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+            cursor: crosshair;
+            margin: 10px 0;
+        }
+
+        .signature-controls {
+            margin-top: 10px;
+        }
+
+        .signature-controls button {
+            background-color: #666;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .signature-controls button:hover {
+            background-color: #555;
+        }
+
+        .signature-preview {
+            display: none;
+            max-width: 300px;
+            margin: 10px 0;
         }
 
         .buttons {
@@ -115,6 +146,15 @@
             }
             .buttons {
                 display: none;
+            }
+            .signature-pad {
+                display: none;
+            }
+            .signature-controls {
+                display: none;
+            }
+            .signature-preview {
+                display: block !important;
             }
         }
     </style>
@@ -154,8 +194,13 @@
             </div>
 
             <div class="signature-area">
-                <p>_________________________________________</p>
-                <p>Assinatura do Beneficiário</p>
+                <p>Assinatura Eletrônica do Beneficiário</p>
+                <canvas id="signature-pad" class="signature-pad" width="400" height="150"></canvas>
+                <div class="signature-controls">
+                    <button onclick="clearSignature()">Limpar</button>
+                    <button onclick="saveSignature()">Salvar Assinatura</button>
+                </div>
+                <img id="signature-preview" class="signature-preview" alt="Assinatura salva">
                 <p>Nome: <span id="beneficiario-assinatura">[Nome do Colaborador]</span></p>
                 <p>CPF: <span id="cpf-assinatura">[000.000.000-00]</span></p>
             </div>
@@ -164,22 +209,73 @@
         <div class="buttons">
             <button onclick="generateReceipt()">Gerar Recibo</button>
             <button onclick="window.print()">Imprimir Recibo</button>
+            <button onclick="saveAsPDF()">Salvar como PDF</button>
         </div>
     </div>
 
     <script>
+        // Configuração da Assinatura
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = getPosition(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            [lastX, lastY] = getPosition(e);
+            ctx.lineTo(lastX, lastY);
+            ctx.stroke();
+        }
+
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return [
+                (e.clientX - rect.left) * scaleX,
+                (e.clientY - rect.top) * scaleY
+            ];
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('signature-preview').style.display = 'none';
+        }
+
+        function saveSignature() {
+            const dataURL = canvas.toDataURL();
+            document.getElementById('signature-preview').src = dataURL;
+            document.getElementById('signature-preview').style.display = 'block';
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Funções do Recibo
         function formatCPF(cpf) {
-            // Remove todos os caracteres não numéricos
             cpf = cpf.replace(/\D/g, '');
-            
-            // Aplica a formatação do CPF
             return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         }
 
         function generateReceipt() {
             const colaborador = prompt("Nome do Colaborador:");
             let cpf = prompt("CPF do Colaborador (apenas números):");
-            cpf = formatCPF(cpf); // Aplica a formatação
+            cpf = formatCPF(cpf);
             const valor = prompt("Valor do Pagamento (R$):");
             const referencia = prompt("Referente a:");
             const metodo = prompt("Método de Pagamento:");
@@ -187,6 +283,12 @@
             const date = new Date().toLocaleDateString();
 
             if(colaborador && cpf && valor && referencia && metodo) {
+                const signatureData = document.getElementById('signature-preview').src;
+                if (!signatureData.includes('data:image')) {
+                    alert("Por favor, salve a assinatura eletrônica antes de gerar o recibo!");
+                    return;
+                }
+
                 document.getElementById('beneficiario').textContent = colaborador;
                 document.getElementById('cpf').textContent = cpf;
                 document.getElementById('beneficiario-assinatura').textContent = colaborador;
@@ -201,16 +303,21 @@
         }
 
         function saveAsPDF() {
-            // Implementação básica usando jsPDF (necessário incluir biblioteca)
             const doc = new jsPDF();
-            doc.html(document.querySelector('.container'), {
+            const element = document.querySelector('.container');
+            const tempElement = element.cloneNode(true);
+            const signaturePreview = tempElement.querySelector('#signature-preview');
+            
+            if (signaturePreview) {
+                signaturePreview.style.display = 'block';
+                signaturePreview.style.maxWidth = '200px';
+            }
+
+            doc.html(tempElement, {
                 callback: function(doc) {
                     doc.save('comprovante.pdf');
                 },
                 margin: [10, 10, 10, 10],
-                autoPaging: 'text',
-                x: 0,
-                y: 0,
                 width: 190,
                 windowWidth: 800
             });
