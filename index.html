@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conveniência da Carne - Comprovante de Pagamento</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #cc0000;
+            padding-bottom: 20px;
+        }
+
+        .logo {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #cc0000;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .receipt-content {
+            margin: 20px 0;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            color: #cc0000;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .detail-item strong {
+            display: inline-block;
+            width: 120px;
+            color: #666;
+        }
+
+        .signature-area {
+        margin-top: 30px;
+        border-top: 1px solid #ddd;
+        padding-top: 20px;
+        text-align: center; /* Centraliza o conteúdo horizontalmente */
+        width: 100%; /* Garante que ocupa toda a largura disponível */
+        margin-left: auto;
+        margin-right: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Centraliza verticalmente os itens */
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        button {
+            background-color: #cc0000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+
+        button:hover {
+            background-color: #b30000;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+            }
+            .container {
+                box-shadow: none;
+            }
+            .buttons {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="logo.png" alt="Logo Conveniência da Carne" class="logo">
+            <h1>Conveniência da Carne</h1>
+            <p class="subtitle">Açougue e Conveniência • CNPJ: 53.428.799/0001-88</p>
+            <p class="subtitle">Rua felizardo moura, 250 - Jardim Planalto Parnamirim RN • (84) 99410-4560</p>
+        </div>
+
+        <div class="receipt-content">
+            <div class="section">
+                <h2>Comprovante de Pagamento</h2>
+                <div class="details">
+                    <div class="detail-item">
+                        <strong>Beneficiário:</strong> <span id="beneficiario">[Nome do Colaborador]</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>CPF:</strong> <span id="cpf">[000.000.000-00]</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Valor:</strong> R$ <span id="valor">[00,00]</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Referente a:</strong> <span id="referencia">[Descrição do Pagamento]</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Data:</strong> <span id="data">[00/00/0000]</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Método:</strong> <span id="metodo">[Forma de Pagamento]</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="signature-area">
+                <p>_________________________________________</p>
+                <p>Assinatura do Beneficiário</p>
+                <p>Nome: <span id="beneficiario-assinatura">[Nome do Colaborador]</span></p>
+                <p>CPF: <span id="cpf-assinatura">[000.000.000-00]</span></p>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="generateReceipt()">Gerar Recibo</button>
+            <button onclick="window.print()">Imprimir Recibo</button>
+        </div>
+    </div>
+
+    <script>
+        function formatCPF(cpf) {
+            // Remove todos os caracteres não numéricos
+            cpf = cpf.replace(/\D/g, '');
+            
+            // Aplica a formatação do CPF
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+
+        function generateReceipt() {
+            const colaborador = prompt("Nome do Colaborador:");
+            let cpf = prompt("CPF do Colaborador (apenas números):");
+            cpf = formatCPF(cpf); // Aplica a formatação
+            const valor = prompt("Valor do Pagamento (R$):");
+            const referencia = prompt("Referente a:");
+            const metodo = prompt("Método de Pagamento:");
+            
+            const date = new Date().toLocaleDateString();
+
+            if(colaborador && cpf && valor && referencia && metodo) {
+                document.getElementById('beneficiario').textContent = colaborador;
+                document.getElementById('cpf').textContent = cpf;
+                document.getElementById('beneficiario-assinatura').textContent = colaborador;
+                document.getElementById('cpf-assinatura').textContent = cpf;
+                document.getElementById('valor').textContent = valor;
+                document.getElementById('referencia').textContent = referencia;
+                document.getElementById('data').textContent = date;
+                document.getElementById('metodo').textContent = metodo;
+            } else {
+                alert("Por favor, preencha todos os campos!");
+            }
+        }
+
+        function saveAsPDF() {
+            // Implementação básica usando jsPDF (necessário incluir biblioteca)
+            const doc = new jsPDF();
+            doc.html(document.querySelector('.container'), {
+                callback: function(doc) {
+                    doc.save('comprovante.pdf');
+                },
+                margin: [10, 10, 10, 10],
+                autoPaging: 'text',
+                x: 0,
+                y: 0,
+                width: 190,
+                windowWidth: 800
+            });
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>
